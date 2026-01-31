@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Manual" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="47.6062" lon="-122.3321">
+    <ele>10</ele>
+    <name>Start</name>
+  </wpt>
+  <wpt lat="47.6080" lon="-122.3350">
+    <ele>20</ele>
+    <name>Aid Station 1</name>
+  </wpt>
+  <trk>
+    <name>Test Track</name>
+    <trkseg>
+      <trkpt lat="47.6062" lon="-122.3321">
+        <ele>10.0</ele>
+      </trkpt>
+      <trkpt lat="47.6070" lon="-122.3330">
+        <ele>15.0</ele>
+      </trkpt>
+      <trkpt lat="47.6080" lon="-122.3350">
+        <ele>20.0</ele>
+      </trkpt>
+      <trkpt lat="47.6090" lon="-122.3360">
+        <ele>15.0</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
