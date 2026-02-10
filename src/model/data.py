@@ -30,6 +30,10 @@ class SplitSegment:
             return 0.0
         return ((self.elevation_gain - self.elevation_loss) / self.length) * 100
 
+    @property
+    def net_change(self) -> float:
+        return self.elevation_gain - self.elevation_loss
+
 @dataclass
 class PacingPlan:
     metadata: Dict[str, Any]

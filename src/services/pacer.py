@@ -184,6 +184,7 @@ def generate_csv(plan: PacingPlan, output_path: str):
         "Split Length (km)", 
         "Gain (m)", 
         "Loss (m)", 
+        "Net Change (m)",
         "Cumulative Elevation (m)",
         "Grade (%)",
         # Planning columns (Empty placeholders for now)
@@ -206,6 +207,7 @@ def generate_csv(plan: PacingPlan, output_path: str):
                 "Split Length (km)": f"{split.length / 1000:.2f}",
                 "Gain (m)": f"{split.elevation_gain:.0f}",
                 "Loss (m)": f"{split.elevation_loss:.0f}",
+                "Net Change (m)": f"{split.net_change:.0f}",
                 "Cumulative Elevation (m)": f"{cumulative_elevation:.0f}",
                 "Grade (%)": f"{split.grade:.1f}",
                 "Target Pace (min/km)": "",

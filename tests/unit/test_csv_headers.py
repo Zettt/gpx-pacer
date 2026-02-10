@@ -31,12 +31,20 @@ def test_csv_includes_planning_columns():
         assert "Split Length (km)" in header
         assert "Gain (m)" in header
         assert "Loss (m)" in header
+        assert "Net Change (m)" in header
         assert "Grade (%)" in header
         # Planning columns (FR-009)
         assert "Target Pace" in header
         assert "Split Time" in header
         assert "Arrival Time" in header
         assert "Station Delay" in header
+        
+        # Verify Net Change position: after Loss, before Cumulative Elevation
+        headers = header.strip().split(",")
+        loss_idx = headers.index("Loss (m)")
+        net_idx = headers.index("Net Change (m)")
+        cum_idx = headers.index("Cumulative Elevation (m)")
+        assert loss_idx < net_idx < cum_idx
     finally:
         os.unlink(output_path)
 

@@ -48,3 +48,27 @@ def test_interpolation_logic():
     # First split 0-1000m. Gain should be 10m (half of 20).
     assert splits[0].length == 1000
     assert splits[0].elevation_gain == 10
+
+def test_net_change_positive():
+    """Net change is positive when gain exceeds loss."""
+    segment = SplitSegment(
+        start_distance=0, end_distance=1000, length=1000,
+        elevation_gain=50, elevation_loss=30
+    )
+    assert segment.net_change == 20
+
+def test_net_change_negative():
+    """Net change is negative when loss exceeds gain."""
+    segment = SplitSegment(
+        start_distance=0, end_distance=1000, length=1000,
+        elevation_gain=10, elevation_loss=40
+    )
+    assert segment.net_change == -30
+
+def test_net_change_zero():
+    """Net change is zero when gain equals loss."""
+    segment = SplitSegment(
+        start_distance=0, end_distance=1000, length=1000,
+        elevation_gain=25, elevation_loss=25
+    )
+    assert segment.net_change == 0
