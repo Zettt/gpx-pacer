@@ -7,7 +7,9 @@ A CLI tool to generate pacing spreadsheets from GPX files for ultra running.
 - Split by fixed distance (1km, 5km, 1mi, etc.)
 - Split by waypoints (aid stations from GPX)
 - Calculates elevation gain/loss and grade per segment
-- Outputs CSV with planning columns for race strategy
+- Calculates net elevation change per split (Gain - Loss)
+- Optional: Detects road surface type (Asphalt, Gravel, etc.) using OpenStreetMap data
+- Multiple output formats: CSV (default) or JSON
 
 ## Installation
 
@@ -44,16 +46,42 @@ uv run gpx-pacer course.gpx -m waypoint
 
 > **Note:** Waypoints more than 100m from the track will trigger a warning.
 
+### Surface Detection (Optional)
+
+To automatically detect surface types for each split (requires internet connection):
+
+```bash
+uv run gpx-pacer course.gpx --surface
+```
+
+This queries the OpenStreetMap Overpass API for each split midpoint.
+
+> **Note:** This uses a free, public Overpass API instance which is rate-limited. Processing may be slower than usual due to these limits and network latency.
+
+### JSON Output
+
+Export as structured JSON instead of CSV:
+
+```bash
+uv run gpx-pacer course.gpx -f json
+```
+
+The JSON output uses the structure `{ "metadata": {...}, "splits": [...] }`, making it easy to consume programmatically.
+
 ### Options
 
-| Flag           | Short | Default              | Description              |
-| -------------- | ----- | -------------------- | ------------------------ |
-| `--output`     | `-o`  | `<input>_pacing.csv` | Output file path         |
-| `--split-mode` | `-m`  | `distance`           | `distance` or `waypoint` |
-| `--split-dist` | `-d`  | `1.0`                | Distance per split       |
-| `--unit`       | `-u`  | `km`                 | `km` or `mi`             |
+| Flag           | Short | Default              | Description                            |
+| -------------- | ----- | -------------------- | -------------------------------------- |
+| `--output`     | `-o`  | `<input>_pacing.csv` | Output file path                       |
+| `--split-mode` | `-m`  | `distance`           | `distance` or `waypoint`               |
+| `--split-dist` | `-d`  | `1.0`                | Distance per split                     |
+| `--unit`       | `-u`  | `km`                 | `km` or `mi`                           |
+| `--format`     | `-f`  | `csv`                | Output format: `csv` or `json`         |
+| `--surface`    |       | `False`              | Query surface type (requires internet) |
 
 ## Output
+
+### CSV (default)
 
 The generated CSV contains:
 
@@ -63,6 +91,8 @@ The generated CSV contains:
 - Distance (cumulative)
 - Split Length
 - Gain / Loss (elevation in meters)
+- Net Change (elevation in meters)
+- Surface (optional)
 - Grade %
 
 **Planning Columns (empty for you to fill)**
@@ -73,6 +103,33 @@ The generated CSV contains:
 - Station Delay
 
 Open in Excel or Google Sheets to complete your race plan.
+
+### JSON
+
+The JSON output contains:
+
+```json
+{
+  "metadata": {
+    "filename": "course.gpx",
+    "total_dist": 73932.71
+  },
+  "splits": [
+    {
+      "segment_name": "1.0 km",
+      "distance_km": 1.0,
+      "split_length_km": 1.0,
+      "gain_m": 40,
+      "loss_m": 8,
+      "net_change_m": 32,
+      "cumulative_elevation_m": 32,
+      "grade_pct": 3.2
+    }
+  ]
+}
+```
+
+The `surface` field is included in each split only when `--surface` is used.
 
 ## Development
 
