@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 from src.services.gpx_service import parse_gpx, map_waypoints_to_track
-from src.services.pacer import create_distance_splits, create_waypoint_splits, generate_csv
+from src.services.pacer import create_distance_splits, create_waypoint_splits, generate_csv, generate_json
 from src.model.data import PacingPlan
 
 def main():
@@ -13,6 +13,7 @@ def main():
     parser.add_argument("-d", "--split-dist", type=float, default=1.0, help="Split distance")
     parser.add_argument("-u", "--unit", choices=["km", "mi"], default="km", help="Unit for distance")
     parser.add_argument("--surface", action="store_true", help="Query OpenStreetMap for surface type per split (requires internet)")
+    parser.add_argument("-f", "--format", choices=["csv", "json"], default="csv", help="Output format (default: csv)")
     
     args = parser.parse_args()
     
@@ -24,7 +25,8 @@ def main():
     output_path = args.output
     if not output_path:
         base_name = os.path.splitext(args.input_file)[0]
-        output_path = f"{base_name}_pacing.csv"
+        ext = "json" if args.format == "json" else "csv"
+        output_path = f"{base_name}_pacing.{ext}"
         
     # 1. Parse GPX
     try:
@@ -65,12 +67,15 @@ def main():
         splits=splits
     )
     
-    # 4. Write CSV
+    # 4. Write Output
     try:
-        generate_csv(plan, output_path)
+        if args.format == "json":
+            generate_json(plan, output_path)
+        else:
+            generate_csv(plan, output_path)
         print(f"Successfully generated pacing plan: {output_path}")
     except Exception as e:
-        print(f"Error writing CSV: {e}")
+        print(f"Error writing output: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

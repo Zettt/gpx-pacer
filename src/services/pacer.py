@@ -1,4 +1,5 @@
 import csv
+import json
 from typing import List, Optional
 from src.model.data import TrackPoint, SplitSegment, PacingPlan
 
@@ -224,3 +225,33 @@ def generate_csv(plan: PacingPlan, output_path: str):
                 row["Surface"] = split.surface or ""
             writer.writerow(row)
 
+
+def generate_json(plan: PacingPlan, output_path: str):
+    has_surface = any(s.surface is not None for s in plan.splits)
+
+    splits_data: list[dict] = []
+    cumulative_elevation = 0.0
+
+    for split in plan.splits:
+        cumulative_elevation += split.elevation_gain - split.elevation_loss
+        entry: dict = {
+            "segment_name": split.name,
+            "distance_km": round(split.end_distance / 1000, 2),
+            "split_length_km": round(split.length / 1000, 2),
+            "gain_m": round(split.elevation_gain),
+            "loss_m": round(split.elevation_loss),
+            "net_change_m": round(split.net_change),
+            "cumulative_elevation_m": round(cumulative_elevation),
+            "grade_pct": round(split.grade, 1),
+        }
+        if has_surface:
+            entry["surface"] = split.surface or ""
+        splits_data.append(entry)
+
+    output = {
+        "metadata": plan.metadata,
+        "splits": splits_data,
+    }
+
+    with open(output_path, 'w') as f:
+        json.dump(output, f, indent=2)
