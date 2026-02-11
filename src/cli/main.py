@@ -12,6 +12,7 @@ def main():
     parser.add_argument("-m", "--split-mode", choices=["distance", "waypoint"], default="distance", help="Split mode")
     parser.add_argument("-d", "--split-dist", type=float, default=1.0, help="Split distance")
     parser.add_argument("-u", "--unit", choices=["km", "mi"], default="km", help="Unit for distance")
+    parser.add_argument("--surface", action="store_true", help="Query OpenStreetMap for surface type per split (requires internet)")
     
     args = parser.parse_args()
     
@@ -48,6 +49,11 @@ def main():
         for warning in warnings:
             print(warning, file=sys.stderr)
         splits = create_waypoint_splits(track_points, mapped_waypoints)
+
+    # 2b. Surface Detection (optional)
+    if args.surface:
+        from src.services.surface_service import detect_surfaces
+        splits = detect_surfaces(splits, track_points)
         
     # 3. Generate Plan
     total_dist = track_points[-1].distance_from_start

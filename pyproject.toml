@@ -5,6 +5,7 @@ description = "A tool to create pacing plans from GPX files"
 authors = [{name = "User", email = "user@example.com"}]
 dependencies = [
     "gpxpy>=1.6.2",
+    "overpy>=0.7",
 ]
 requires-python = ">=3.12"
 

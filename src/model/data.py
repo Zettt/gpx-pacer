@@ -23,6 +23,7 @@ class SplitSegment:
     elevation_gain: float
     elevation_loss: float
     name: Optional[str] = None
+    surface: Optional[str] = None
     
     @property
     def grade(self) -> float:

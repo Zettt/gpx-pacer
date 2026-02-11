@@ -178,8 +178,13 @@ def create_waypoint_splits(
 
 
 def generate_csv(plan: PacingPlan, output_path: str):
-    fieldnames = [
-        "Segment Name", 
+    # Check if surface data is present
+    has_surface = any(s.surface is not None for s in plan.splits)
+
+    fieldnames = ["Segment Name"]
+    if has_surface:
+        fieldnames.append("Surface")
+    fieldnames.extend([
         "Distance (km)", 
         "Split Length (km)", 
         "Gain (m)", 
@@ -192,7 +197,7 @@ def generate_csv(plan: PacingPlan, output_path: str):
         "Split Time (min)",
         "Station Delay (min)",
         "Arrival Time",
-    ]
+    ])
     
     with open(output_path, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -201,7 +206,7 @@ def generate_csv(plan: PacingPlan, output_path: str):
         cumulative_elevation = 0.0
         for split in plan.splits:
             cumulative_elevation += split.elevation_gain - split.elevation_loss
-            writer.writerow({
+            row = {
                 "Segment Name": split.name,
                 "Distance (km)": f"{split.end_distance / 1000:.2f}",
                 "Split Length (km)": f"{split.length / 1000:.2f}",
@@ -214,4 +219,8 @@ def generate_csv(plan: PacingPlan, output_path: str):
                 "Split Time (min)": "",
                 "Station Delay (min)": "",
                 "Arrival Time": "",
-            })
+            }
+            if has_surface:
+                row["Surface"] = split.surface or ""
+            writer.writerow(row)
+
