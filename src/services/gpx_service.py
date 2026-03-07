@@ -64,7 +64,7 @@ def map_waypoints_to_track(
         Tuple of (mapped_waypoints, warnings) where warnings contains messages
         about any waypoints that are more than off_route_threshold_m from the track.
     """
-    from src.lib.geo_utils import haversine_distance
+    from gpxpy.geo import haversine_distance
     
     if not track_points or not waypoints:
         return [], []
