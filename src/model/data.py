@@ -12,6 +12,15 @@ class TrackPoint:
     heart_rate_bpm: Optional[int] = None
     cadence: Optional[int] = None
     temperature_c: Optional[float] = None
+    speed_mps: Optional[float] = None
+    power_w: Optional[int] = None
+    respiration_rate_brpm: Optional[float] = None
+    vertical_oscillation_mm: Optional[float] = None
+    stance_time_ms: Optional[float] = None
+    stance_time_percent: Optional[float] = None
+    vertical_ratio_pct: Optional[float] = None
+    stance_time_balance_pct: Optional[float] = None
+    step_length_mm: Optional[float] = None
 
 @dataclass
 class Waypoint:
@@ -51,6 +60,17 @@ class AnalysisSplitSegment(SplitSegment):
     max_heart_rate_bpm: Optional[int] = None
     average_cadence: Optional[float] = None
     average_temperature_c: Optional[float] = None
+    average_speed_mps: Optional[float] = None
+    average_power_w: Optional[float] = None
+    max_power_w: Optional[int] = None
+    average_respiration_rate_brpm: Optional[float] = None
+    max_respiration_rate_brpm: Optional[float] = None
+    average_vertical_oscillation_mm: Optional[float] = None
+    average_stance_time_ms: Optional[float] = None
+    average_stance_time_percent: Optional[float] = None
+    average_vertical_ratio_pct: Optional[float] = None
+    average_stance_time_balance_pct: Optional[float] = None
+    average_step_length_mm: Optional[float] = None
     point_count: int = 0
 
 @dataclass

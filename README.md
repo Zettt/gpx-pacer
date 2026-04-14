@@ -1,16 +1,17 @@
 # GPX Pacer
 
-A CLI tool to generate pacing spreadsheets from GPX files for ultra running.
+A CLI tool to generate pacing spreadsheets from GPX and FIT files for ultra running.
 
 ## Features
 
 - Split by fixed distance (1km, 5km, 1mi, etc.)
 - Split by waypoints (aid stations from GPX)
-- Post-race analysis mode from recorded activity GPX files
+- Post-race analysis mode from recorded activity GPX or FIT files
 - Calculates elevation gain/loss and grade per segment
 - Calculates net elevation change per split (Gain - Loss)
 - Optional: Detects road surface type (Asphalt, Gravel, etc.) using OpenStreetMap data
 - Multiple output formats: CSV (default) or JSON
+- FIT analysis can also include running dynamics, power, respiration, workout metadata, and course points when present in the file
 
 ## Installation
 
@@ -30,6 +31,9 @@ uv sync
 # 1km splits (default)
 uv run gpx-pacer course.gpx
 
+# FIT file
+uv run gpx-pacer course.fit
+
 # 5km splits
 uv run gpx-pacer course.gpx -d 5
 
@@ -39,7 +43,7 @@ uv run gpx-pacer course.gpx -u mi -d 1
 
 ### Waypoint Splits (Aid Stations)
 
-If your GPX file contains `<wpt>` elements for aid stations:
+If your GPX file contains `<wpt>` elements for aid stations, or your FIT file contains course points:
 
 ```bash
 uv run gpx-pacer course.gpx -m waypoint
@@ -49,12 +53,16 @@ uv run gpx-pacer course.gpx -m waypoint
 
 ### Post-Race Analysis
 
-Use a recorded activity GPX to generate compact split summaries with actual elapsed time,
-pace, and watch metrics such as heart rate, cadence, and temperature.
+Use a recorded activity GPX or FIT file to generate compact split summaries with actual elapsed time,
+pace, and watch metrics such as heart rate, cadence, and temperature. FIT files can also add
+power, respiration, running dynamics, and structured workout or course metadata when available.
 
 ```bash
 # Analyze a recorded activity in 1km splits
 uv run gpx-pacer data/Freiburg_Marathon_2026_Recording.gpx -m analysis
+
+# Analyze a recorded activity FIT file
+uv run gpx-pacer data/Freiburg_Marathon_2026_Recording.fit -m analysis
 
 # Analyze a recorded activity in 100m splits
 uv run gpx-pacer data/Freiburg_Marathon_2026_Recording.gpx -m analysis -d 0.1
@@ -155,7 +163,11 @@ When `-m analysis` is used, the output contains split summaries only. CSV and JS
 - Average and max heart rate
 - Average cadence
 - Average temperature
+- FIT-only fields such as average speed, power, respiration, and running dynamics when present
 - Elevation gain, loss, net change, and grade
+
+For FIT analysis in JSON output, `metadata` may also include `fit_session`, `fit_laps`,
+`fit_time_in_zone`, `fit_workout`, `fit_workout_steps`, and `fit_course_points`.
 
 ## Development
 

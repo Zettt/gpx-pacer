@@ -212,6 +212,7 @@ def _interpolate_track_point(
 
     heart_rate = _interpolate_numeric(start_point.heart_rate_bpm, end_point.heart_rate_bpm, fraction)
     cadence = _interpolate_numeric(start_point.cadence, end_point.cadence, fraction)
+    power = _interpolate_numeric(start_point.power_w, end_point.power_w, fraction)
 
     return TrackPoint(
         lat=_interpolate_numeric(start_point.lat, end_point.lat, fraction) or start_point.lat,
@@ -222,6 +223,35 @@ def _interpolate_track_point(
         heart_rate_bpm=round(heart_rate) if heart_rate is not None else None,
         cadence=round(cadence) if cadence is not None else None,
         temperature_c=_interpolate_numeric(start_point.temperature_c, end_point.temperature_c, fraction),
+        speed_mps=_interpolate_numeric(start_point.speed_mps, end_point.speed_mps, fraction),
+        power_w=round(power) if power is not None else None,
+        respiration_rate_brpm=_interpolate_numeric(
+            start_point.respiration_rate_brpm,
+            end_point.respiration_rate_brpm,
+            fraction,
+        ),
+        vertical_oscillation_mm=_interpolate_numeric(
+            start_point.vertical_oscillation_mm,
+            end_point.vertical_oscillation_mm,
+            fraction,
+        ),
+        stance_time_ms=_interpolate_numeric(start_point.stance_time_ms, end_point.stance_time_ms, fraction),
+        stance_time_percent=_interpolate_numeric(
+            start_point.stance_time_percent,
+            end_point.stance_time_percent,
+            fraction,
+        ),
+        vertical_ratio_pct=_interpolate_numeric(
+            start_point.vertical_ratio_pct,
+            end_point.vertical_ratio_pct,
+            fraction,
+        ),
+        stance_time_balance_pct=_interpolate_numeric(
+            start_point.stance_time_balance_pct,
+            end_point.stance_time_balance_pct,
+            fraction,
+        ),
+        step_length_mm=_interpolate_numeric(start_point.step_length_mm, end_point.step_length_mm, fraction),
     )
 
 
@@ -263,7 +293,7 @@ def _average_optional(values: List[int | float | None]) -> float | None:
     return sum(present_values) / len(present_values)
 
 
-def _max_optional(values: List[int | None]) -> int | None:
+def _max_optional(values: List[int | float | None]) -> int | float | None:
     present_values = [value for value in values if value is not None]
     if not present_values:
         return None
@@ -304,6 +334,27 @@ def _build_analysis_split(
         max_heart_rate_bpm=_max_optional([point.heart_rate_bpm for point in split_points]),
         average_cadence=_average_optional([point.cadence for point in split_points]),
         average_temperature_c=_average_optional([point.temperature_c for point in split_points]),
+        average_speed_mps=_average_optional([point.speed_mps for point in split_points]),
+        average_power_w=_average_optional([point.power_w for point in split_points]),
+        max_power_w=_max_optional([point.power_w for point in split_points]),
+        average_respiration_rate_brpm=_average_optional(
+            [point.respiration_rate_brpm for point in split_points]
+        ),
+        max_respiration_rate_brpm=_max_optional(
+            [point.respiration_rate_brpm for point in split_points]
+        ),
+        average_vertical_oscillation_mm=_average_optional(
+            [point.vertical_oscillation_mm for point in split_points]
+        ),
+        average_stance_time_ms=_average_optional([point.stance_time_ms for point in split_points]),
+        average_stance_time_percent=_average_optional(
+            [point.stance_time_percent for point in split_points]
+        ),
+        average_vertical_ratio_pct=_average_optional([point.vertical_ratio_pct for point in split_points]),
+        average_stance_time_balance_pct=_average_optional(
+            [point.stance_time_balance_pct for point in split_points]
+        ),
+        average_step_length_mm=_average_optional([point.step_length_mm for point in split_points]),
         point_count=len(split_points),
     )
 
@@ -477,6 +528,17 @@ def generate_analysis_csv(plan: PacingPlan, output_path: str):
         "Max HR (bpm)",
         "Avg Cadence",
         "Avg Temp (C)",
+        "Avg Speed (m/s)",
+        "Avg Power (W)",
+        "Max Power (W)",
+        "Avg Respiration (brpm)",
+        "Max Respiration (brpm)",
+        "Avg Vertical Oscillation (mm)",
+        "Avg Stance Time (ms)",
+        "Avg Stance Time (%)",
+        "Avg Vertical Ratio (%)",
+        "Avg Stance Time Balance (%)",
+        "Avg Step Length (mm)",
         "Gain (m)",
         "Loss (m)",
         "Net Change (m)",
@@ -505,6 +567,35 @@ def generate_analysis_csv(plan: PacingPlan, output_path: str):
                 "Max HR (bpm)": _format_optional_number(split.max_heart_rate_bpm),
                 "Avg Cadence": _format_optional_number(split.average_cadence, decimals=1),
                 "Avg Temp (C)": _format_optional_number(split.average_temperature_c, decimals=1),
+                "Avg Speed (m/s)": _format_optional_number(split.average_speed_mps, decimals=2),
+                "Avg Power (W)": _format_optional_number(split.average_power_w, decimals=1),
+                "Max Power (W)": _format_optional_number(split.max_power_w),
+                "Avg Respiration (brpm)": _format_optional_number(
+                    split.average_respiration_rate_brpm,
+                    decimals=1,
+                ),
+                "Max Respiration (brpm)": _format_optional_number(
+                    split.max_respiration_rate_brpm,
+                    decimals=1,
+                ),
+                "Avg Vertical Oscillation (mm)": _format_optional_number(
+                    split.average_vertical_oscillation_mm,
+                    decimals=1,
+                ),
+                "Avg Stance Time (ms)": _format_optional_number(split.average_stance_time_ms, decimals=1),
+                "Avg Stance Time (%)": _format_optional_number(
+                    split.average_stance_time_percent,
+                    decimals=2,
+                ),
+                "Avg Vertical Ratio (%)": _format_optional_number(
+                    split.average_vertical_ratio_pct,
+                    decimals=2,
+                ),
+                "Avg Stance Time Balance (%)": _format_optional_number(
+                    split.average_stance_time_balance_pct,
+                    decimals=2,
+                ),
+                "Avg Step Length (mm)": _format_optional_number(split.average_step_length_mm, decimals=1),
                 "Gain (m)": f"{split.elevation_gain:.0f}",
                 "Loss (m)": f"{split.elevation_loss:.0f}",
                 "Net Change (m)": f"{split.net_change:.0f}",
@@ -533,6 +624,49 @@ def generate_analysis_json(plan: PacingPlan, output_path: str):
             "max_hr_bpm": split.max_heart_rate_bpm,
             "avg_cadence": round(split.average_cadence, 2) if split.average_cadence is not None else None,
             "avg_temp_c": round(split.average_temperature_c, 2) if split.average_temperature_c is not None else None,
+            "avg_speed_mps": round(split.average_speed_mps, 3) if split.average_speed_mps is not None else None,
+            "avg_power_w": round(split.average_power_w, 2) if split.average_power_w is not None else None,
+            "max_power_w": split.max_power_w,
+            "avg_respiration_rate_brpm": (
+                round(split.average_respiration_rate_brpm, 2)
+                if split.average_respiration_rate_brpm is not None
+                else None
+            ),
+            "max_respiration_rate_brpm": (
+                round(split.max_respiration_rate_brpm, 2)
+                if split.max_respiration_rate_brpm is not None
+                else None
+            ),
+            "avg_vertical_oscillation_mm": (
+                round(split.average_vertical_oscillation_mm, 2)
+                if split.average_vertical_oscillation_mm is not None
+                else None
+            ),
+            "avg_stance_time_ms": (
+                round(split.average_stance_time_ms, 2)
+                if split.average_stance_time_ms is not None
+                else None
+            ),
+            "avg_stance_time_percent": (
+                round(split.average_stance_time_percent, 2)
+                if split.average_stance_time_percent is not None
+                else None
+            ),
+            "avg_vertical_ratio_pct": (
+                round(split.average_vertical_ratio_pct, 2)
+                if split.average_vertical_ratio_pct is not None
+                else None
+            ),
+            "avg_stance_time_balance_pct": (
+                round(split.average_stance_time_balance_pct, 2)
+                if split.average_stance_time_balance_pct is not None
+                else None
+            ),
+            "avg_step_length_mm": (
+                round(split.average_step_length_mm, 2)
+                if split.average_step_length_mm is not None
+                else None
+            ),
             "gain_m": round(split.elevation_gain),
             "loss_m": round(split.elevation_loss),
             "net_change_m": round(split.net_change),

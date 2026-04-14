@@ -1,7 +1,8 @@
 import argparse
 import sys
 import os
-from src.services.gpx_service import parse_gpx, map_waypoints_to_track
+from src.services.activity_service import parse_activity
+from src.services.gpx_service import map_waypoints_to_track
 from src.services.pacer import (
     create_analysis_splits,
     create_distance_splits,
@@ -14,8 +15,8 @@ from src.services.pacer import (
 from src.model.data import PacingPlan
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate pacing plan from GPX")
-    parser.add_argument("input_file", help="Path to GPX file")
+    parser = argparse.ArgumentParser(description="Generate pacing plan from GPX or FIT")
+    parser.add_argument("input_file", help="Path to GPX or FIT file")
     parser.add_argument("-o", "--output", help="Output CSV file path")
     parser.add_argument("-m", "--split-mode", choices=["distance", "waypoint", "analysis"], default="distance", help="Split mode")
     parser.add_argument("-d", "--split-dist", type=float, default=1.0, help="Split distance")
@@ -37,15 +38,15 @@ def main():
         suffix = "_analysis" if args.split_mode == "analysis" else "_pacing"
         output_path = f"{base_name}{suffix}.{ext}"
         
-    # 1. Parse GPX
+    # 1. Parse input activity
     try:
-        track_points, waypoints = parse_gpx(args.input_file)
+        track_points, waypoints, extra_metadata = parse_activity(args.input_file)
     except Exception as e:
-        print(f"Error parsing GPX: {e}")
+        print(f"Error parsing input file: {e}")
         sys.exit(1)
         
     if not track_points:
-        print("Error: No track points found in GPX.")
+        print("Error: No usable track points found in input file.")
         sys.exit(1)
 
     # 2. Calculate Splits
@@ -71,10 +72,9 @@ def main():
         
     # 3. Generate Plan
     total_dist = track_points[-1].distance_from_start
-    plan = PacingPlan(
-        metadata={"filename": args.input_file, "total_dist": total_dist, "mode": args.split_mode},
-        splits=splits
-    )
+    metadata = {"filename": args.input_file, "total_dist": total_dist, "mode": args.split_mode}
+    metadata.update(extra_metadata)
+    plan = PacingPlan(metadata=metadata, splits=splits)
     
     # 4. Write Output
     try:
