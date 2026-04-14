@@ -6,6 +6,7 @@ A CLI tool to generate pacing spreadsheets from GPX files for ultra running.
 
 - Split by fixed distance (1km, 5km, 1mi, etc.)
 - Split by waypoints (aid stations from GPX)
+- Post-race analysis mode from recorded activity GPX files
 - Calculates elevation gain/loss and grade per segment
 - Calculates net elevation change per split (Gain - Loss)
 - Optional: Detects road surface type (Asphalt, Gravel, etc.) using OpenStreetMap data
@@ -46,6 +47,19 @@ uv run gpx-pacer course.gpx -m waypoint
 
 > **Note:** Waypoints more than 100m from the track will trigger a warning.
 
+### Post-Race Analysis
+
+Use a recorded activity GPX to generate compact split summaries with actual elapsed time,
+pace, and watch metrics such as heart rate, cadence, and temperature.
+
+```bash
+# Analyze a recorded activity in 1km splits
+uv run gpx-pacer data/Freiburg_Marathon_2026_Recording.gpx -m analysis
+
+# Analyze a recorded activity in 100m splits
+uv run gpx-pacer data/Freiburg_Marathon_2026_Recording.gpx -m analysis -d 0.1
+```
+
 ### Surface Detection (Optional)
 
 To automatically detect surface types for each split (requires internet connection):
@@ -73,7 +87,7 @@ The JSON output uses the structure `{ "metadata": {...}, "splits": [...] }`, mak
 | Flag           | Short | Default              | Description                            |
 | -------------- | ----- | -------------------- | -------------------------------------- |
 | `--output`     | `-o`  | `<input>_pacing.csv` | Output file path                       |
-| `--split-mode` | `-m`  | `distance`           | `distance` or `waypoint`               |
+| `--split-mode` | `-m`  | `distance`           | `distance`, `waypoint`, or `analysis`  |
 | `--split-dist` | `-d`  | `1.0`                | Distance per split                     |
 | `--unit`       | `-u`  | `km`                 | `km` or `mi`                           |
 | `--format`     | `-f`  | `csv`                | Output format: `csv` or `json`         |
@@ -130,6 +144,18 @@ The JSON output contains:
 ```
 
 The `surface` field is included in each split only when `--surface` is used.
+
+### Analysis Output
+
+When `-m analysis` is used, the output contains split summaries only. CSV and JSON include:
+
+- Start and end distance
+- Start and end time
+- Elapsed time and pace
+- Average and max heart rate
+- Average cadence
+- Average temperature
+- Elevation gain, loss, net change, and grade
 
 ## Development
 

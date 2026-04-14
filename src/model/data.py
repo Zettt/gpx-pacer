@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 @dataclass
@@ -7,6 +8,10 @@ class TrackPoint:
     lon: float
     ele: Optional[float] = None
     distance_from_start: float = 0.0
+    timestamp: Optional[datetime] = None
+    heart_rate_bpm: Optional[int] = None
+    cadence: Optional[int] = None
+    temperature_c: Optional[float] = None
 
 @dataclass
 class Waypoint:
@@ -35,7 +40,20 @@ class SplitSegment:
     def net_change(self) -> float:
         return self.elevation_gain - self.elevation_loss
 
+
+@dataclass
+class AnalysisSplitSegment(SplitSegment):
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    elapsed_seconds: Optional[float] = None
+    pace_seconds_per_km: Optional[float] = None
+    average_heart_rate_bpm: Optional[float] = None
+    max_heart_rate_bpm: Optional[int] = None
+    average_cadence: Optional[float] = None
+    average_temperature_c: Optional[float] = None
+    point_count: int = 0
+
 @dataclass
 class PacingPlan:
     metadata: Dict[str, Any]
-    splits: List['SplitSegment'] = field(default_factory=list)
+    splits: List[SplitSegment | AnalysisSplitSegment] = field(default_factory=list)

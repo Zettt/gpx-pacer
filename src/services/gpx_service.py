@@ -3,6 +3,26 @@ import gpxpy.gpx
 from typing import List, Tuple
 from src.model.data import TrackPoint, Waypoint
 
+
+def _parse_track_point_extensions(point: gpxpy.gpx.GPXTrackPoint) -> tuple[int | None, int | None, float | None]:
+    heart_rate_bpm = None
+    cadence = None
+    temperature_c = None
+
+    for extension in point.extensions:
+        for child in extension:
+            tag_name = child.tag.split("}")[-1]
+            if child.text is None:
+                continue
+            if tag_name == "hr":
+                heart_rate_bpm = int(child.text)
+            elif tag_name == "cad":
+                cadence = int(child.text)
+            elif tag_name == "atemp":
+                temperature_c = float(child.text)
+
+    return heart_rate_bpm, cadence, temperature_c
+
 def parse_gpx(file_path: str) -> Tuple[List[TrackPoint], List[Waypoint]]:
     """
     Parses a GPX file and returns a list of TrackPoints (with cumulative distance)
@@ -27,12 +47,18 @@ def parse_gpx(file_path: str) -> Tuple[List[TrackPoint], List[Waypoint]]:
                     dist = point.distance_2d(previous_point)
                     if dist:
                          cumulative_distance += dist
+
+                heart_rate_bpm, cadence, temperature_c = _parse_track_point_extensions(point)
                 
                 track_points.append(TrackPoint(
                     lat=point.latitude,
                     lon=point.longitude,
                     ele=point.elevation,
-                    distance_from_start=cumulative_distance
+                    distance_from_start=cumulative_distance,
+                    timestamp=point.time,
+                    heart_rate_bpm=heart_rate_bpm,
+                    cadence=cadence,
+                    temperature_c=temperature_c,
                 ))
                 previous_point = point
 
