@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A tool to create pacing plans from GPX files"
 authors = [{name = "User", email = "user@example.com"}]
 dependencies = [
+    "fitdecode>=0.11.0",
     "gpxpy>=1.6.2",
     "overpy>=0.7",
 ]

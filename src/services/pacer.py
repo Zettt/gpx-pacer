@@ -1,7 +1,8 @@
 import csv
 import json
+from datetime import timedelta
 from typing import List, Optional
-from src.model.data import TrackPoint, SplitSegment, PacingPlan
+from src.model.data import AnalysisSplitSegment, TrackPoint, SplitSegment, PacingPlan
 
 def create_distance_splits(points: List[TrackPoint], split_distance_meters: float) -> List[SplitSegment]:
     if not points:
@@ -178,6 +179,254 @@ def create_waypoint_splits(
     return splits
 
 
+def _interpolate_numeric(start_value: float | None, end_value: float | None, fraction: float) -> float | None:
+    if start_value is None and end_value is None:
+        return None
+    if start_value is None:
+        return end_value
+    if end_value is None:
+        return start_value
+    return start_value + ((end_value - start_value) * fraction)
+
+
+def _interpolate_timestamp(start_time, end_time, fraction: float):
+    if start_time is None and end_time is None:
+        return None
+    if start_time is None:
+        return end_time
+    if end_time is None:
+        return start_time
+    delta = end_time - start_time
+    return start_time + timedelta(seconds=delta.total_seconds() * fraction)
+
+
+def _interpolate_track_point(
+    start_point: TrackPoint,
+    end_point: TrackPoint,
+    target_distance: float,
+) -> TrackPoint:
+    segment_length = end_point.distance_from_start - start_point.distance_from_start
+    fraction = 0.0 if segment_length == 0 else (
+        (target_distance - start_point.distance_from_start) / segment_length
+    )
+
+    heart_rate = _interpolate_numeric(start_point.heart_rate_bpm, end_point.heart_rate_bpm, fraction)
+    cadence = _interpolate_numeric(start_point.cadence, end_point.cadence, fraction)
+    power = _interpolate_numeric(start_point.power_w, end_point.power_w, fraction)
+
+    return TrackPoint(
+        lat=_interpolate_numeric(start_point.lat, end_point.lat, fraction) or start_point.lat,
+        lon=_interpolate_numeric(start_point.lon, end_point.lon, fraction) or start_point.lon,
+        ele=_interpolate_numeric(start_point.ele, end_point.ele, fraction),
+        distance_from_start=target_distance,
+        timestamp=_interpolate_timestamp(start_point.timestamp, end_point.timestamp, fraction),
+        heart_rate_bpm=round(heart_rate) if heart_rate is not None else None,
+        cadence=round(cadence) if cadence is not None else None,
+        temperature_c=_interpolate_numeric(start_point.temperature_c, end_point.temperature_c, fraction),
+        speed_mps=_interpolate_numeric(start_point.speed_mps, end_point.speed_mps, fraction),
+        power_w=round(power) if power is not None else None,
+        respiration_rate_brpm=_interpolate_numeric(
+            start_point.respiration_rate_brpm,
+            end_point.respiration_rate_brpm,
+            fraction,
+        ),
+        vertical_oscillation_mm=_interpolate_numeric(
+            start_point.vertical_oscillation_mm,
+            end_point.vertical_oscillation_mm,
+            fraction,
+        ),
+        stance_time_ms=_interpolate_numeric(start_point.stance_time_ms, end_point.stance_time_ms, fraction),
+        stance_time_percent=_interpolate_numeric(
+            start_point.stance_time_percent,
+            end_point.stance_time_percent,
+            fraction,
+        ),
+        vertical_ratio_pct=_interpolate_numeric(
+            start_point.vertical_ratio_pct,
+            end_point.vertical_ratio_pct,
+            fraction,
+        ),
+        stance_time_balance_pct=_interpolate_numeric(
+            start_point.stance_time_balance_pct,
+            end_point.stance_time_balance_pct,
+            fraction,
+        ),
+        step_length_mm=_interpolate_numeric(start_point.step_length_mm, end_point.step_length_mm, fraction),
+    )
+
+
+def _append_point_if_new(points: List[TrackPoint], point: TrackPoint):
+    if not points:
+        points.append(point)
+        return
+
+    last_point = points[-1]
+    if (
+        last_point.distance_from_start != point.distance_from_start
+        or last_point.timestamp != point.timestamp
+    ):
+        points.append(point)
+
+
+def _add_elevation_change(
+    start_point: TrackPoint,
+    end_point: TrackPoint,
+    current_gain: float,
+    current_loss: float,
+) -> tuple[float, float]:
+    if start_point.ele is None or end_point.ele is None:
+        return current_gain, current_loss
+
+    diff = end_point.ele - start_point.ele
+    if diff > 0:
+        current_gain += diff
+    else:
+        current_loss += abs(diff)
+
+    return current_gain, current_loss
+
+
+def _average_optional(values: List[int | float | None]) -> float | None:
+    present_values = [value for value in values if value is not None]
+    if not present_values:
+        return None
+    return sum(present_values) / len(present_values)
+
+
+def _max_optional(values: List[int | float | None]) -> int | float | None:
+    present_values = [value for value in values if value is not None]
+    if not present_values:
+        return None
+    return max(present_values)
+
+
+def _build_analysis_split(
+    split_points: List[TrackPoint],
+    start_distance: float,
+    end_distance: float,
+    elevation_gain: float,
+    elevation_loss: float,
+    name: str,
+) -> AnalysisSplitSegment:
+    start_time = split_points[0].timestamp if split_points else None
+    end_time = split_points[-1].timestamp if split_points else None
+    elapsed_seconds = None
+    if start_time is not None and end_time is not None:
+        elapsed_seconds = (end_time - start_time).total_seconds()
+
+    length = end_distance - start_distance
+    pace_seconds_per_km = None
+    if elapsed_seconds is not None and length > 0:
+        pace_seconds_per_km = elapsed_seconds / (length / 1000)
+
+    return AnalysisSplitSegment(
+        start_distance=start_distance,
+        end_distance=end_distance,
+        length=length,
+        elevation_gain=elevation_gain,
+        elevation_loss=elevation_loss,
+        name=name,
+        start_time=start_time,
+        end_time=end_time,
+        elapsed_seconds=elapsed_seconds,
+        pace_seconds_per_km=pace_seconds_per_km,
+        average_heart_rate_bpm=_average_optional([point.heart_rate_bpm for point in split_points]),
+        max_heart_rate_bpm=_max_optional([point.heart_rate_bpm for point in split_points]),
+        average_cadence=_average_optional([point.cadence for point in split_points]),
+        average_temperature_c=_average_optional([point.temperature_c for point in split_points]),
+        average_speed_mps=_average_optional([point.speed_mps for point in split_points]),
+        average_power_w=_average_optional([point.power_w for point in split_points]),
+        max_power_w=_max_optional([point.power_w for point in split_points]),
+        average_respiration_rate_brpm=_average_optional(
+            [point.respiration_rate_brpm for point in split_points]
+        ),
+        max_respiration_rate_brpm=_max_optional(
+            [point.respiration_rate_brpm for point in split_points]
+        ),
+        average_vertical_oscillation_mm=_average_optional(
+            [point.vertical_oscillation_mm for point in split_points]
+        ),
+        average_stance_time_ms=_average_optional([point.stance_time_ms for point in split_points]),
+        average_stance_time_percent=_average_optional(
+            [point.stance_time_percent for point in split_points]
+        ),
+        average_vertical_ratio_pct=_average_optional([point.vertical_ratio_pct for point in split_points]),
+        average_stance_time_balance_pct=_average_optional(
+            [point.stance_time_balance_pct for point in split_points]
+        ),
+        average_step_length_mm=_average_optional([point.step_length_mm for point in split_points]),
+        point_count=len(split_points),
+    )
+
+
+def create_analysis_splits(
+    points: List[TrackPoint],
+    split_distance_meters: float,
+) -> List[AnalysisSplitSegment]:
+    if not points:
+        return []
+
+    splits: List[AnalysisSplitSegment] = []
+    current_split_start_dist = points[0].distance_from_start
+    current_split_gain = 0.0
+    current_split_loss = 0.0
+    current_split_points: List[TrackPoint] = [points[0]]
+    prev_point = points[0]
+    target_dist = current_split_start_dist + split_distance_meters
+
+    for curr_point in points[1:]:
+        while curr_point.distance_from_start >= target_dist:
+            boundary_point = _interpolate_track_point(prev_point, curr_point, target_dist)
+            current_split_gain, current_split_loss = _add_elevation_change(
+                prev_point,
+                boundary_point,
+                current_split_gain,
+                current_split_loss,
+            )
+            _append_point_if_new(current_split_points, boundary_point)
+
+            splits.append(
+                _build_analysis_split(
+                    split_points=current_split_points,
+                    start_distance=current_split_start_dist,
+                    end_distance=target_dist,
+                    elevation_gain=current_split_gain,
+                    elevation_loss=current_split_loss,
+                    name=f"{target_dist / 1000:.1f} km",
+                )
+            )
+
+            current_split_start_dist = target_dist
+            current_split_gain = 0.0
+            current_split_loss = 0.0
+            target_dist += split_distance_meters
+            prev_point = boundary_point
+            current_split_points = [boundary_point]
+
+        current_split_gain, current_split_loss = _add_elevation_change(
+            prev_point,
+            curr_point,
+            current_split_gain,
+            current_split_loss,
+        )
+        _append_point_if_new(current_split_points, curr_point)
+        prev_point = curr_point
+
+    if prev_point.distance_from_start > current_split_start_dist:
+        splits.append(
+            _build_analysis_split(
+                split_points=current_split_points,
+                start_distance=current_split_start_dist,
+                end_distance=prev_point.distance_from_start,
+                elevation_gain=current_split_gain,
+                elevation_loss=current_split_loss,
+                name="Finish",
+            )
+        )
+
+    return splits
+
+
 def generate_csv(plan: PacingPlan, output_path: str):
     # Check if surface data is present
     has_surface = any(s.surface is not None for s in plan.splits)
@@ -254,4 +503,181 @@ def generate_json(plan: PacingPlan, output_path: str):
     }
 
     with open(output_path, 'w') as f:
+        json.dump(output, f, indent=2)
+
+
+def _format_optional_number(value: float | int | None, decimals: int = 1) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, int):
+        return str(value)
+    return f"{value:.{decimals}f}"
+
+
+def generate_analysis_csv(plan: PacingPlan, output_path: str):
+    fieldnames = [
+        "Segment Name",
+        "Start Dist (m)",
+        "End Dist (m)",
+        "Split Length (m)",
+        "Start Time",
+        "End Time",
+        "Elapsed (s)",
+        "Pace (s/km)",
+        "Avg HR (bpm)",
+        "Max HR (bpm)",
+        "Avg Cadence",
+        "Avg Temp (C)",
+        "Avg Speed (m/s)",
+        "Avg Power (W)",
+        "Max Power (W)",
+        "Avg Respiration (brpm)",
+        "Max Respiration (brpm)",
+        "Avg Vertical Oscillation (mm)",
+        "Avg Stance Time (ms)",
+        "Avg Stance Time (%)",
+        "Avg Vertical Ratio (%)",
+        "Avg Stance Time Balance (%)",
+        "Avg Step Length (mm)",
+        "Gain (m)",
+        "Loss (m)",
+        "Net Change (m)",
+        "Grade (%)",
+        "Point Count",
+    ]
+
+    with open(output_path, "w", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for split in plan.splits:
+            if not isinstance(split, AnalysisSplitSegment):
+                continue
+
+            writer.writerow({
+                "Segment Name": split.name,
+                "Start Dist (m)": f"{split.start_distance:.2f}",
+                "End Dist (m)": f"{split.end_distance:.2f}",
+                "Split Length (m)": f"{split.length:.2f}",
+                "Start Time": split.start_time.isoformat() if split.start_time else "",
+                "End Time": split.end_time.isoformat() if split.end_time else "",
+                "Elapsed (s)": _format_optional_number(split.elapsed_seconds, decimals=1),
+                "Pace (s/km)": _format_optional_number(split.pace_seconds_per_km, decimals=1),
+                "Avg HR (bpm)": _format_optional_number(split.average_heart_rate_bpm, decimals=1),
+                "Max HR (bpm)": _format_optional_number(split.max_heart_rate_bpm),
+                "Avg Cadence": _format_optional_number(split.average_cadence, decimals=1),
+                "Avg Temp (C)": _format_optional_number(split.average_temperature_c, decimals=1),
+                "Avg Speed (m/s)": _format_optional_number(split.average_speed_mps, decimals=2),
+                "Avg Power (W)": _format_optional_number(split.average_power_w, decimals=1),
+                "Max Power (W)": _format_optional_number(split.max_power_w),
+                "Avg Respiration (brpm)": _format_optional_number(
+                    split.average_respiration_rate_brpm,
+                    decimals=1,
+                ),
+                "Max Respiration (brpm)": _format_optional_number(
+                    split.max_respiration_rate_brpm,
+                    decimals=1,
+                ),
+                "Avg Vertical Oscillation (mm)": _format_optional_number(
+                    split.average_vertical_oscillation_mm,
+                    decimals=1,
+                ),
+                "Avg Stance Time (ms)": _format_optional_number(split.average_stance_time_ms, decimals=1),
+                "Avg Stance Time (%)": _format_optional_number(
+                    split.average_stance_time_percent,
+                    decimals=2,
+                ),
+                "Avg Vertical Ratio (%)": _format_optional_number(
+                    split.average_vertical_ratio_pct,
+                    decimals=2,
+                ),
+                "Avg Stance Time Balance (%)": _format_optional_number(
+                    split.average_stance_time_balance_pct,
+                    decimals=2,
+                ),
+                "Avg Step Length (mm)": _format_optional_number(split.average_step_length_mm, decimals=1),
+                "Gain (m)": f"{split.elevation_gain:.0f}",
+                "Loss (m)": f"{split.elevation_loss:.0f}",
+                "Net Change (m)": f"{split.net_change:.0f}",
+                "Grade (%)": f"{split.grade:.1f}",
+                "Point Count": split.point_count,
+            })
+
+
+def generate_analysis_json(plan: PacingPlan, output_path: str):
+    splits_data: list[dict] = []
+
+    for split in plan.splits:
+        if not isinstance(split, AnalysisSplitSegment):
+            continue
+
+        splits_data.append({
+            "segment_name": split.name,
+            "start_dist_m": round(split.start_distance, 2),
+            "end_dist_m": round(split.end_distance, 2),
+            "split_length_m": round(split.length, 2),
+            "start_time": split.start_time.isoformat() if split.start_time else None,
+            "end_time": split.end_time.isoformat() if split.end_time else None,
+            "elapsed_s": round(split.elapsed_seconds, 2) if split.elapsed_seconds is not None else None,
+            "pace_s_per_km": round(split.pace_seconds_per_km, 2) if split.pace_seconds_per_km is not None else None,
+            "avg_hr_bpm": round(split.average_heart_rate_bpm, 2) if split.average_heart_rate_bpm is not None else None,
+            "max_hr_bpm": split.max_heart_rate_bpm,
+            "avg_cadence": round(split.average_cadence, 2) if split.average_cadence is not None else None,
+            "avg_temp_c": round(split.average_temperature_c, 2) if split.average_temperature_c is not None else None,
+            "avg_speed_mps": round(split.average_speed_mps, 3) if split.average_speed_mps is not None else None,
+            "avg_power_w": round(split.average_power_w, 2) if split.average_power_w is not None else None,
+            "max_power_w": split.max_power_w,
+            "avg_respiration_rate_brpm": (
+                round(split.average_respiration_rate_brpm, 2)
+                if split.average_respiration_rate_brpm is not None
+                else None
+            ),
+            "max_respiration_rate_brpm": (
+                round(split.max_respiration_rate_brpm, 2)
+                if split.max_respiration_rate_brpm is not None
+                else None
+            ),
+            "avg_vertical_oscillation_mm": (
+                round(split.average_vertical_oscillation_mm, 2)
+                if split.average_vertical_oscillation_mm is not None
+                else None
+            ),
+            "avg_stance_time_ms": (
+                round(split.average_stance_time_ms, 2)
+                if split.average_stance_time_ms is not None
+                else None
+            ),
+            "avg_stance_time_percent": (
+                round(split.average_stance_time_percent, 2)
+                if split.average_stance_time_percent is not None
+                else None
+            ),
+            "avg_vertical_ratio_pct": (
+                round(split.average_vertical_ratio_pct, 2)
+                if split.average_vertical_ratio_pct is not None
+                else None
+            ),
+            "avg_stance_time_balance_pct": (
+                round(split.average_stance_time_balance_pct, 2)
+                if split.average_stance_time_balance_pct is not None
+                else None
+            ),
+            "avg_step_length_mm": (
+                round(split.average_step_length_mm, 2)
+                if split.average_step_length_mm is not None
+                else None
+            ),
+            "gain_m": round(split.elevation_gain),
+            "loss_m": round(split.elevation_loss),
+            "net_change_m": round(split.net_change),
+            "grade_pct": round(split.grade, 1),
+            "point_count": split.point_count,
+        })
+
+    output = {
+        "metadata": plan.metadata,
+        "splits": splits_data,
+    }
+
+    with open(output_path, "w") as f:
         json.dump(output, f, indent=2)

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 @dataclass
@@ -7,6 +8,19 @@ class TrackPoint:
     lon: float
     ele: Optional[float] = None
     distance_from_start: float = 0.0
+    timestamp: Optional[datetime] = None
+    heart_rate_bpm: Optional[int] = None
+    cadence: Optional[int] = None
+    temperature_c: Optional[float] = None
+    speed_mps: Optional[float] = None
+    power_w: Optional[int] = None
+    respiration_rate_brpm: Optional[float] = None
+    vertical_oscillation_mm: Optional[float] = None
+    stance_time_ms: Optional[float] = None
+    stance_time_percent: Optional[float] = None
+    vertical_ratio_pct: Optional[float] = None
+    stance_time_balance_pct: Optional[float] = None
+    step_length_mm: Optional[float] = None
 
 @dataclass
 class Waypoint:
@@ -35,7 +49,31 @@ class SplitSegment:
     def net_change(self) -> float:
         return self.elevation_gain - self.elevation_loss
 
+
+@dataclass
+class AnalysisSplitSegment(SplitSegment):
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    elapsed_seconds: Optional[float] = None
+    pace_seconds_per_km: Optional[float] = None
+    average_heart_rate_bpm: Optional[float] = None
+    max_heart_rate_bpm: Optional[int] = None
+    average_cadence: Optional[float] = None
+    average_temperature_c: Optional[float] = None
+    average_speed_mps: Optional[float] = None
+    average_power_w: Optional[float] = None
+    max_power_w: Optional[int] = None
+    average_respiration_rate_brpm: Optional[float] = None
+    max_respiration_rate_brpm: Optional[float] = None
+    average_vertical_oscillation_mm: Optional[float] = None
+    average_stance_time_ms: Optional[float] = None
+    average_stance_time_percent: Optional[float] = None
+    average_vertical_ratio_pct: Optional[float] = None
+    average_stance_time_balance_pct: Optional[float] = None
+    average_step_length_mm: Optional[float] = None
+    point_count: int = 0
+
 @dataclass
 class PacingPlan:
     metadata: Dict[str, Any]
-    splits: List['SplitSegment'] = field(default_factory=list)
+    splits: List[SplitSegment | AnalysisSplitSegment] = field(default_factory=list)
