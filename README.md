@@ -132,6 +132,8 @@ The generated CSV contains:
 
 Open in Excel or Google Sheets to complete your race plan.
 
+The Excel template can derive per-split target pace from one global flat-course target pace. Enter your base target pace in the `Target Pace` input cell; the template adjusts each split using `Grade (%)` and a Minetti-style grade-cost polynomial. This gives uphill splits a slower target pace and downhill splits a grade-adjusted target pace. The adjustment is similar in concept to [Strava GAP](https://support.strava.com/hc/en-us/articles/216917067-Grade-Adjusted-Pace-GAP), but it is not an official Strava formula and does not account for surface, footing, fatigue, or technical terrain.
+
 ### JSON
 
 The JSON output contains:
