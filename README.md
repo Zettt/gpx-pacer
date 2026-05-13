@@ -84,7 +84,16 @@ uv run gpx-pacer course.gpx --surface
 
 This queries the OpenStreetMap Overpass API for each split midpoint.
 
+If the default Overpass endpoint is unavailable, override it with a custom endpoint, e.g. your own hosted instance:
+
+```bash
+uv run gpx-pacer course.gpx --surface --surface-endpoint https://server.url.com/api/interpreter
+```
+
+You can also set `GPX_PACER_SURFACE_ENDPOINT` and keep the CLI invocation unchanged.
+
 > **Note:** This uses a free, public Overpass API instance which is rate-limited. Processing may be slower than usual due to these limits and network latency.
+> If the surface lookup endpoint returns an API or HTTP error, `gpx-pacer` exits with an error and suggests configuring `--surface-endpoint` or `GPX_PACER_SURFACE_ENDPOINT`.
 
 ### JSON Output
 
@@ -106,6 +115,7 @@ The JSON output uses the structure `{ "metadata": {...}, "splits": [...] }`, mak
 | `--unit`       | `-u`  | `km`                 | `km` or `mi`                           |
 | `--format`     | `-f`  | `csv`                | Output format: `csv` or `json`         |
 | `--surface`    |       | `False`              | Query surface type (requires internet) |
+| `--surface-endpoint` |  | unset                | Override Overpass API endpoint for surface lookups |
 
 ## Output
 
