@@ -1,12 +1,14 @@
 [project]
 name = "gpx-pacer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A tool to create pacing plans from GPX files"
 authors = [{name = "User", email = "user@example.com"}]
 dependencies = [
     "fitdecode>=0.11.0",
     "gpxpy>=1.6.2",
-    "overpy>=0.7",
+    "pyproj>=3.7.2",
+    "requests>=2.34.0",
+    "shapely>=2.1.2",
 ]
 requires-python = ">=3.12"
 

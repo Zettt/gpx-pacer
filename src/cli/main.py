@@ -21,7 +21,11 @@ def main():
     parser.add_argument("-m", "--split-mode", choices=["distance", "waypoint", "analysis"], default="distance", help="Split mode")
     parser.add_argument("-d", "--split-dist", type=float, default=1.0, help="Split distance")
     parser.add_argument("-u", "--unit", choices=["km", "mi"], default="km", help="Unit for distance")
-    parser.add_argument("--surface", action="store_true", help="Query OpenStreetMap for surface type per split (requires internet)")
+    parser.add_argument(
+        "--surface",
+        action="store_true",
+        help="Query OpenStreetMap for split surfaces using one route-level download (requires internet)",
+    )
     parser.add_argument(
         "--surface-endpoint",
         help="Override Overpass API endpoint for surface lookups",
