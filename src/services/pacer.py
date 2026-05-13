@@ -515,8 +515,13 @@ def _format_optional_number(value: float | int | None, decimals: int = 1) -> str
 
 
 def generate_analysis_csv(plan: PacingPlan, output_path: str):
-    fieldnames = [
-        "Segment Name",
+    has_surface = any(s.surface is not None for s in plan.splits)
+
+    fieldnames = ["Segment Name"]
+    if has_surface:
+        fieldnames.append("Surface")
+
+    fieldnames.extend([
         "Start Dist (m)",
         "End Dist (m)",
         "Split Length (m)",
@@ -544,7 +549,7 @@ def generate_analysis_csv(plan: PacingPlan, output_path: str):
         "Net Change (m)",
         "Grade (%)",
         "Point Count",
-    ]
+    ])
 
     with open(output_path, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -554,7 +559,7 @@ def generate_analysis_csv(plan: PacingPlan, output_path: str):
             if not isinstance(split, AnalysisSplitSegment):
                 continue
 
-            writer.writerow({
+            row = {
                 "Segment Name": split.name,
                 "Start Dist (m)": f"{split.start_distance:.2f}",
                 "End Dist (m)": f"{split.end_distance:.2f}",
@@ -601,17 +606,22 @@ def generate_analysis_csv(plan: PacingPlan, output_path: str):
                 "Net Change (m)": f"{split.net_change:.0f}",
                 "Grade (%)": f"{split.grade:.1f}",
                 "Point Count": split.point_count,
-            })
+            }
+            if has_surface:
+                row["Surface"] = split.surface or ""
+            writer.writerow(row)
 
 
 def generate_analysis_json(plan: PacingPlan, output_path: str):
+    has_surface = any(s.surface is not None for s in plan.splits)
+
     splits_data: list[dict] = []
 
     for split in plan.splits:
         if not isinstance(split, AnalysisSplitSegment):
             continue
 
-        splits_data.append({
+        entry = {
             "segment_name": split.name,
             "start_dist_m": round(split.start_distance, 2),
             "end_dist_m": round(split.end_distance, 2),
@@ -672,7 +682,10 @@ def generate_analysis_json(plan: PacingPlan, output_path: str):
             "net_change_m": round(split.net_change),
             "grade_pct": round(split.grade, 1),
             "point_count": split.point_count,
-        })
+        }
+        if has_surface:
+            entry["surface"] = split.surface or ""
+        splits_data.append(entry)
 
     output = {
         "metadata": plan.metadata,

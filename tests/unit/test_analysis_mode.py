@@ -218,6 +218,65 @@ def test_analysis_json_output_uses_analysis_fields():
     assert data["metadata"]["fit_workout"]["wkt_name"] == "Example"
 
 
+def test_analysis_json_output_includes_surface_when_present():
+    plan = PacingPlan(
+        metadata={"filename": "recording.fit", "total_dist": 1000, "mode": "analysis"},
+        splits=[
+            AnalysisSplitSegment(
+                start_distance=0,
+                end_distance=1000,
+                length=1000,
+                elevation_gain=20,
+                elevation_loss=5,
+                name="1.0 km",
+                surface="Gravel",
+                point_count=12,
+            )
+        ],
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        output_path = f.name
+
+    try:
+        generate_analysis_json(plan, output_path)
+        with open(output_path, "r") as f:
+            data = json.load(f)
+    finally:
+        os.unlink(output_path)
+
+    assert data["splits"][0]["surface"] == "Gravel"
+
+
+def test_analysis_json_output_excludes_surface_when_absent():
+    plan = PacingPlan(
+        metadata={"filename": "recording.fit", "total_dist": 1000, "mode": "analysis"},
+        splits=[
+            AnalysisSplitSegment(
+                start_distance=0,
+                end_distance=1000,
+                length=1000,
+                elevation_gain=20,
+                elevation_loss=5,
+                name="1.0 km",
+                point_count=12,
+            )
+        ],
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        output_path = f.name
+
+    try:
+        generate_analysis_json(plan, output_path)
+        with open(output_path, "r") as f:
+            data = json.load(f)
+    finally:
+        os.unlink(output_path)
+
+    assert "surface" not in data["splits"][0]
+
+
 def test_analysis_csv_output_has_analysis_headers_and_blank_optional_metrics():
     plan = PacingPlan(
         metadata={"filename": "recording.gpx", "total_dist": 1000, "mode": "analysis"},
@@ -275,3 +334,66 @@ def test_analysis_csv_output_has_analysis_headers_and_blank_optional_metrics():
     assert row["Avg Temp (C)"] == ""
     assert row["Avg Power (W)"] == ""
     assert row["Avg Respiration (brpm)"] == ""
+
+
+def test_analysis_csv_output_includes_surface_when_present():
+    plan = PacingPlan(
+        metadata={"filename": "recording.gpx", "total_dist": 1000, "mode": "analysis"},
+        splits=[
+            AnalysisSplitSegment(
+                start_distance=0,
+                end_distance=1000,
+                length=1000,
+                elevation_gain=20,
+                elevation_loss=5,
+                name="1.0 km",
+                surface="Asphalt",
+                point_count=12,
+            )
+        ],
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+        output_path = f.name
+
+    try:
+        generate_analysis_csv(plan, output_path)
+        with open(output_path, "r") as f:
+            reader = csv.DictReader(f)
+            headers = reader.fieldnames
+            row = next(reader)
+    finally:
+        os.unlink(output_path)
+
+    assert headers[:2] == ["Segment Name", "Surface"]
+    assert row["Surface"] == "Asphalt"
+
+
+def test_analysis_csv_output_excludes_surface_when_absent():
+    plan = PacingPlan(
+        metadata={"filename": "recording.gpx", "total_dist": 1000, "mode": "analysis"},
+        splits=[
+            AnalysisSplitSegment(
+                start_distance=0,
+                end_distance=1000,
+                length=1000,
+                elevation_gain=20,
+                elevation_loss=5,
+                name="1.0 km",
+                point_count=12,
+            )
+        ],
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+        output_path = f.name
+
+    try:
+        generate_analysis_csv(plan, output_path)
+        with open(output_path, "r") as f:
+            reader = csv.DictReader(f)
+            headers = reader.fieldnames
+    finally:
+        os.unlink(output_path)
+
+    assert "Surface" not in headers

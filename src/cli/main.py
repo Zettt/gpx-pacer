@@ -21,7 +21,15 @@ def main():
     parser.add_argument("-m", "--split-mode", choices=["distance", "waypoint", "analysis"], default="distance", help="Split mode")
     parser.add_argument("-d", "--split-dist", type=float, default=1.0, help="Split distance")
     parser.add_argument("-u", "--unit", choices=["km", "mi"], default="km", help="Unit for distance")
-    parser.add_argument("--surface", action="store_true", help="Query OpenStreetMap for surface type per split (requires internet)")
+    parser.add_argument(
+        "--surface",
+        action="store_true",
+        help="Query OpenStreetMap for split surfaces using one route-level download (requires internet)",
+    )
+    parser.add_argument(
+        "--surface-endpoint",
+        help="Override Overpass API endpoint for surface lookups",
+    )
     parser.add_argument("-f", "--format", choices=["csv", "json"], default="csv", help="Output format (default: csv)")
     
     args = parser.parse_args()
@@ -67,8 +75,23 @@ def main():
 
     # 2b. Surface Detection (optional)
     if args.surface:
-        from src.services.surface_service import detect_surfaces
-        splits = detect_surfaces(splits, track_points)
+        from src.services.surface_service import SurfaceQueryError, detect_surfaces
+
+        surface_endpoint = args.surface_endpoint or os.environ.get(
+            "GPX_PACER_SURFACE_ENDPOINT"
+        )
+        try:
+            splits = detect_surfaces(
+                splits,
+                track_points,
+                endpoint=surface_endpoint,
+            )
+        except SurfaceQueryError as e:
+            print(
+                f"{e}. Try --surface-endpoint <url> or run without --surface.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         
     # 3. Generate Plan
     total_dist = track_points[-1].distance_from_start

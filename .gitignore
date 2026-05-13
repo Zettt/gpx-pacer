@@ -215,10 +215,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Gemini
+# Agents
 .gemini
-# Spec Kit
 .specify
 specs/
-
 .serena
+.agents
